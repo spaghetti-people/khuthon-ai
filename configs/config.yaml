@@ -1,0 +1,5 @@
+server:
+    address: ":8081"
+api:
+    geminiKey: "${GEMINI_API_KEY}"
+    model: "${GEMINI_MODEL}"
