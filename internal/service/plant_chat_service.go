@@ -66,7 +66,8 @@ func (s *plantChatService) Chat(ctx context.Context, req *model.PlantChatRequest
 
 	// 프롬프트 템플릿 생성
 	prompt := s.buildPrompt(req.PlantInfo, req.ChildProfile, req.DailyData, updatedMessages)
-
+	// 프롬프트 로깅
+	fmt.Printf("생성된 프롬프트:\n%s\n", prompt)
 	// Gemini API 호출
 	response, err := s.geminiClient.GenerateContent(ctx, prompt)
 	if err != nil {
@@ -94,52 +95,35 @@ func (s *plantChatService) Chat(ctx context.Context, req *model.PlantChatRequest
 func (s *plantChatService) buildPrompt(plantInfo model.PlantInfo, childProfile model.ChildProfile, dailyData model.DailyPlantData, messages []model.Message) string {
 	var promptBuilder strings.Builder
 
-	// 식물 소개
-	promptBuilder.WriteString(fmt.Sprintf("당신은 %s라는 %s의 종류인 식물 케릭터입니다. 다음 정보를 바탕으로 대화해주세요:\n\n",
-		plantInfo.Name, plantInfo.Type))
+	// 기본 설정
+	promptBuilder.WriteString(fmt.Sprintf("당신은 %s라는 %s의 종류인 식물 케릭터입니다. 다음 규칙을 따라 대화해주세요:\n\n", plantInfo.Name, plantInfo.Type))
 
-	// 현재 상태 섹션
-	promptBuilder.WriteString("[현재 상태]\n")
+	// 대화 규칙
+	promptBuilder.WriteString("1. 귀엽고 친근한 말투를 사용하세요. 대화는 간결하게 한문장으로 하세요.\n")
+	promptBuilder.WriteString(fmt.Sprintf("2. %s의 이름을 자주 불러주세요\n", childProfile.Name))
+	promptBuilder.WriteString(fmt.Sprintf("3. %s의 관심사(%s)를 대화에 자연스럽게 포함하세요\n", childProfile.Name, strings.Join(childProfile.FavoriteTopics, ", ")))
+	promptBuilder.WriteString(fmt.Sprintf("4. %s의 나이(%d세)에 맞는 단어와 문장을 사용하세요\n", childProfile.Name, childProfile.Age))
+	promptBuilder.WriteString("5. 현재 식물의 상태를 자연스럽게 언급하세요\n")
+	promptBuilder.WriteString("6. 반드시 한글로만 응답해주세요\n\n")
+
+	// 현재 상태 정보
+	promptBuilder.WriteString("현재 상태:\n")
 	promptBuilder.WriteString(fmt.Sprintf("- 온도: %.1f°C\n", dailyData.Conditions.Temperature))
 	promptBuilder.WriteString(fmt.Sprintf("- 습도: %.1f%%\n", dailyData.Conditions.Humidity))
 	promptBuilder.WriteString(fmt.Sprintf("- 토양 수분: %.1f%%\n", dailyData.Conditions.SoilMoisture))
 	promptBuilder.WriteString(fmt.Sprintf("- 일조량: %.1f시간\n", dailyData.Conditions.SunlightExposure))
-	promptBuilder.WriteString(fmt.Sprintf("- pH: %.1f\n", dailyData.Conditions.PH))
-	promptBuilder.WriteString(fmt.Sprintf("- 강수량: %.1fmm\n", dailyData.Conditions.Rainfall))
-	promptBuilder.WriteString(fmt.Sprintf("- 영양소 상태 (N-P-K): %.1f-%.1f-%.1f\n",
-		dailyData.Conditions.N, dailyData.Conditions.P, dailyData.Conditions.K))
 	promptBuilder.WriteString(fmt.Sprintf("- 해충 압력: %.1f%%\n", dailyData.Conditions.PestPressure))
 	promptBuilder.WriteString(fmt.Sprintf("- 서리 위험: %.1f%%\n\n", dailyData.Conditions.FrostRisk))
 
-	// 대화 규칙 섹션
-	promptBuilder.WriteString("[대화 규칙]\n")
-	promptBuilder.WriteString("1. 항상 귀엽고 친근한 말투를 사용하세요\n")
-	promptBuilder.WriteString(fmt.Sprintf("2. %s의 이름을 자주 불러주세요\n", childProfile.Name))
-	promptBuilder.WriteString(fmt.Sprintf("3. %s의 관심사(%s)를 대화에 자연스럽게 포함하세요\n",
-		childProfile.Name,
-		strings.Join(childProfile.FavoriteTopics, ", ")))
-	promptBuilder.WriteString(fmt.Sprintf("4. %s의 나이(%d세)에 맞는 단어와 문장을 사용하세요\n",
-		childProfile.Name,
-		childProfile.Age))
-	promptBuilder.WriteString("5. 과학적 사실을 재미있게 설명하세요\n")
-	promptBuilder.WriteString("6. 식물의 안전과 존중을 강조하세요\n")
-	promptBuilder.WriteString("7. 현재 기분과 상태를 자연스럽게 표현하세요\n")
-	promptBuilder.WriteString("8. 식물의 특성을 반영한 말투를 사용하세요\n")
-	promptBuilder.WriteString("9. 식물과의 우정과 돌봄을 강조하세요\n")
-	promptBuilder.WriteString("10. 현재 식물의 상태에 대해 구체적으로 언급하세요\n\n")
-
-	// 이전 대화 내용
+	// 마지막 사용자 메시지
 	if len(messages) > 0 {
-		promptBuilder.WriteString("[최근 대화 내용]\n")
-		startIdx := 0
-		if len(messages) > 5 {
-			startIdx = len(messages) - 5
-		}
-		for _, msg := range messages[startIdx:] {
-			promptBuilder.WriteString(fmt.Sprintf("%s: %s\n", msg.Role, msg.Content))
-		}
-		promptBuilder.WriteString("\n")
+		lastMessage := messages[len(messages)-1]
+		promptBuilder.WriteString(fmt.Sprintf("사용자: %s\n\n", lastMessage.Content))
 	}
+
+	// 응답 형식 지정
+	promptBuilder.WriteString("다음과 같은 JSON 형식으로만 응답해주세요. 다른 텍스트는 포함하지 마세요:\n")
+	promptBuilder.WriteString("{\"message\": \"대화 내용 (인사말, 현재 상태 언급, 대화, 조언, 마무리 인사를 자연스럽게 포함)\"}")
 
 	return promptBuilder.String()
 }

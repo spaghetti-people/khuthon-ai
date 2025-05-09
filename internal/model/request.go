@@ -25,9 +25,7 @@ func BuildGeminiRequest(prompt string, schema map[string]interface{}, temperatur
 	req := GeminiRequest{
 		Contents: []ContentWrapper{{Parts: []Part{{Text: prompt}}}},
 		GenerationConfig: GenerationConfig{
-			ResponseMimeType: "application/json",
-			ResponseSchema:   schema,
-			Temperature:      temperature,
+			Temperature: temperature,
 		},
 	}
 	b, _ := json.Marshal(req)

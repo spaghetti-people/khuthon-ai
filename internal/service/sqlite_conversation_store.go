@@ -64,12 +64,12 @@ func (s *SQLiteConversationStore) SaveConversation(plantID string, messages []mo
 	}
 	defer stmt.Close()
 
-	// 각 메시지마다 약간의 시간 차이를 두어 저장
+	// 현재 시간을 기준으로 각 메시지의 시간을 설정
 	baseTime := time.Now()
 	for i, msg := range messages {
-		// 각 메시지마다 1초씩 차이를 둠
-		msgTime := baseTime.Add(time.Duration(i) * time.Second)
-		_, err = stmt.Exec(plantID, msg.UserID, msg.Role, msg.Content, msgTime.Format(time.RFC3339))
+		// 각 메시지마다 밀리초 단위로 차이를 둠
+		msgTime := baseTime.Add(time.Duration(i) * time.Millisecond)
+		_, err = stmt.Exec(plantID, msg.UserID, msg.Role, msg.Content, msgTime.Format(time.RFC3339Nano))
 		if err != nil {
 			return fmt.Errorf("failed to insert message: %w", err)
 		}
