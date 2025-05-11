@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spaghetti-people/khuthon-ai/internal/model"
@@ -24,7 +25,11 @@ type plantChatService struct {
 
 // NewPlantChatService 새로운 식물 채팅 서비스 인스턴스를 생성합니다
 func NewPlantChatService(geminiClient GeminiClient) (PlantChatService, error) {
-	store, err := NewSQLiteConversationStore("conversations.db")
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "conversations.db"
+	}
+	store, err := NewSQLiteConversationStore(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create conversation store: %w", err)
 	}
